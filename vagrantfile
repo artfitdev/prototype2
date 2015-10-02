@@ -1,0 +1,69 @@
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+
+    config.ssh.insert_key = true 
+    config.ssh.private_key_path = "C:\\Users\\Andrey\\.ssh\\ArtFit_privatekey.ppk"   
+
+    config.vm.network :forwarded_port, guest: 80, host: 80
+
+    config.vm.define "default", autostart: false do |default|
+
+        default.vm.box = "ubuntu/trusty64"
+
+        # The application code
+        default.vm.synced_folder ".", "/var/www", type: "nfs"
+        #default.vm.network :forwarded_port, guest: 80, host: 80
+
+        default.vm.provider "virtualbox" do |virtualbox|
+            virtualbox.memory = 2048
+            virtualbox.gui = true
+        end
+
+        
+        #default.vm.provision "docker"
+        default.vm.provision "docker" do |docker|
+            #docker.build_image "/var/www/config/environment/docker/redis", args: '-t "redis"'
+            #docker.build_image "/var/www/config/environment/docker/goserver", args: '-t "goserver"'
+            docker.build_image "/var/www/config/environment/docker/nginx", args: '-t "nginx"'
+            
+        end
+        default.vm.provision "shell", inline: "ps aux | grep 'sshd:' | awk '{print $2}' | xargs kill"
+    end
+
+  #config.vm.define "redis" do |redis|
+  #    redis.vm.provider "docker" do |docker|          
+  #        docker.image = "redis"
+  #        docker.name = "redis"     
+  #        docker.vagrant_vagrantfile = __FILE__
+  #        docker.remains_running = true
+  #        docker.ports = ["6379:6379"]
+  #    end
+  #end
+
+   # config.vm.define "goserver" do |goserver|
+   #     goserver.vm.provider "docker" do |docker|
+   #         docker.image = "goserver"
+   #         docker.name = "goserver"
+   #         #docker.link "redis:redis"
+   #         # docker.create_args = ["--volumes-from=app"]
+   #         docker.vagrant_vagrantfile = __FILE__
+   #         docker.remains_running = true
+   #         docker.ports = ["8080:8080"]
+   #     end
+   # end
+
+  config.vm.define "nginx" do |nginx|
+      nginx.vm.provider "docker" do |docker|
+          docker.image = "nginx"
+          docker.name = "nginx"
+          # docker.create_args = ["--volumes-from=app"]
+          #docker.link "goserver:goserver"
+          docker.vagrant_vagrantfile = __FILE__
+          docker.remains_running = true
+          docker.ports = ["80:80"]
+          docker.volumes = ["/var/www/src/Prototype1/web:/var/www"]
+      end
+  end
+  
+end
